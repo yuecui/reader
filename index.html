@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#15120f">
   <title>Living Pages — Immersive Audiobook Reader</title>
   <meta name="description" content="A local-first, synchronized audiobook reader for Voicebox chapter manifests and clips.">
-  <link rel="stylesheet" href="styles.css?v=20260731-2">
+  <link rel="stylesheet" href="styles.css?v=20260731-3">
 </head>
 <body>
   <header class="topbar">
@@ -110,10 +110,13 @@
     <form method="dialog" id="urlForm">
       <button class="dialog-close" id="dialogClose" type="button" aria-label="Close">×</button>
       <p class="eyebrow">Hosted chapter</p>
-      <h2>Open a manifest URL</h2>
-      <p>Paste a public <code>manifest.json</code> address. Audio clips will be loaded from its neighboring <code>clips/</code> folder.</p>
-      <label for="manifestUrl">Manifest URL</label>
-      <input id="manifestUrl" type="url" required placeholder="https://username.github.io/reader/books/chapter1/manifest.json">
+      <h2>Choose an edition</h2>
+      <p>Select a hosted reading of Chapter 1. Audio clips will be loaded from the selected manifest's neighboring <code>clips/</code> folder.</p>
+      <label for="manifestUrl">Chapter edition</label>
+      <select id="manifestUrl" required>
+        <option value="https://raw.githubusercontent.com/yuecui/audiobooks_by_yc/main/Adam_Bede/chapter1_audio_british/manifest.json">Chapter 1 — British accent</option>
+        <option value="https://raw.githubusercontent.com/yuecui/audiobooks_by_yc/main/Adam_Bede/chapter1_audio_multivoice/manifest.json">Chapter 1 — Regular multivoice</option>
+      </select>
       <button class="dialog-submit" value="default" type="submit">Open chapter</button>
     </form>
   </dialog>
