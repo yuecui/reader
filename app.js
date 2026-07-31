@@ -7,13 +7,23 @@ const state = {
   index: 0,
   loadedIndex: -1,
   autoScroll: true,
-  wordTracking: localStorage.getItem("living-pages-word-tracking") !== "off",
+  wordTracking: getStoredPreference("living-pages-word-tracking") !== "off",
   session: [],
   objectUrl: null,
 };
 
 const $ = (id) => document.getElementById(id);
 const audio = $("audio");
+
+function getStoredPreference(key) {
+  try { return window.localStorage.getItem(key); }
+  catch { return null; }
+}
+
+function setStoredPreference(key, value) {
+  try { window.localStorage.setItem(key, value); }
+  catch { /* Reading still works when storage is blocked. */ }
+}
 
 document.querySelectorAll("[data-folder-input], #folderInput").forEach(input => {
   input.addEventListener("change", event => loadFolder([...event.target.files]));
@@ -65,7 +75,7 @@ async function loadManifestUrl(value) {
     const pageUrl = new URL(window.location.href);
     pageUrl.searchParams.set("manifest", url.href);
     history.replaceState(null, "", pageUrl);
-    $("urlDialog").close();
+    setUrlDialogOpen(false);
     toast(`Loaded ${state.segments.length} hosted passages`);
   } catch (error) {
     toast(error.message || String(error));
@@ -235,7 +245,7 @@ $("wordTracking").classList.toggle("active", state.wordTracking);
 $("wordTracking").setAttribute("aria-pressed", String(state.wordTracking));
 $("wordTracking").addEventListener("click", event => {
   state.wordTracking = !state.wordTracking;
-  localStorage.setItem("living-pages-word-tracking", state.wordTracking ? "on" : "off");
+  setStoredPreference("living-pages-word-tracking", state.wordTracking ? "on" : "off");
   event.currentTarget.classList.toggle("active", state.wordTracking);
   event.currentTarget.setAttribute("aria-pressed", String(state.wordTracking));
   if (!state.wordTracking) {
@@ -251,12 +261,31 @@ $("focusToggle").addEventListener("click", event => {
 $("focusExit").addEventListener("click", exitFocusMode);
 
 function openUrlDialog() {
-  $("urlDialog").showModal();
+  setUrlDialogOpen(true);
   setTimeout(() => $("manifestUrl").focus(), 0);
+}
+
+function setUrlDialogOpen(open) {
+  const dialog = $("urlDialog");
+  if (open) {
+    try {
+      if (typeof dialog.showModal === "function") dialog.showModal();
+      else dialog.setAttribute("open", "");
+    } catch {
+      dialog.setAttribute("open", "");
+    }
+    dialog.classList.add("dialog-visible");
+    document.body.classList.add("dialog-open");
+    return;
+  }
+  if (typeof dialog.close === "function" && dialog.open) dialog.close();
+  else dialog.removeAttribute("open");
+  dialog.classList.remove("dialog-visible");
+  document.body.classList.remove("dialog-open");
 }
 $("urlToggle").addEventListener("click", openUrlDialog);
 $("urlHeroButton").addEventListener("click", openUrlDialog);
-$("dialogClose").addEventListener("click", () => $("urlDialog").close());
+$("dialogClose").addEventListener("click", () => setUrlDialogOpen(false));
 $("urlForm").addEventListener("submit", event => {
   event.preventDefault();
   loadManifestUrl($("manifestUrl").value);
