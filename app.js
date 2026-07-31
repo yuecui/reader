@@ -2,6 +2,8 @@ const state = {
   manifest: null,
   segments: [],
   files: new Map(),
+  baseUrl: null,
+  manifestUrl: null,
   index: 0,
   loadedIndex: -1,
   autoScroll: true,
@@ -27,6 +29,8 @@ async function loadFolder(files) {
     }
     state.manifest = manifest;
     state.segments = manifest.segments;
+    state.baseUrl = null;
+    state.manifestUrl = null;
     state.files.clear();
     for (const file of files) {
       if (/\.(wav|mp3|m4a|ogg)$/i.test(file.name)) state.files.set(file.name, file);
@@ -41,12 +45,44 @@ async function loadFolder(files) {
   }
 }
 
+async function loadManifestUrl(value) {
+  try {
+    const url = new URL(value, window.location.href);
+    toast("Loading hosted chapter…");
+    const response = await fetch(url.href, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Manifest request failed: ${response.status} ${response.statusText}`);
+    const manifest = await response.json();
+    if (!Array.isArray(manifest.segments) || !manifest.segments.length) {
+      throw new Error("The hosted manifest contains no audio segments.");
+    }
+    state.manifest = manifest;
+    state.segments = manifest.segments;
+    state.files.clear();
+    state.baseUrl = new URL(".", url.href);
+    state.manifestUrl = url.href;
+    renderReader();
+    selectSegment(0, false);
+    const pageUrl = new URL(window.location.href);
+    pageUrl.searchParams.set("manifest", url.href);
+    history.replaceState(null, "", pageUrl);
+    $("urlDialog").close();
+    toast(`Loaded ${state.segments.length} hosted passages`);
+  } catch (error) {
+    toast(error.message || String(error));
+  }
+}
+
 function clipBasename(segment) {
   const value = segment.clip || "";
   return value.split(/[\\/]/).pop();
 }
 
 function findClip(segment) {
+  if (state.baseUrl) {
+    if (segment.audio_url) return new URL(segment.audio_url, state.baseUrl).href;
+    const name = clipBasename(segment);
+    return name ? new URL(`clips/${encodeURIComponent(name)}`, state.baseUrl).href : null;
+  }
   return state.files.get(clipBasename(segment));
 }
 
@@ -91,6 +127,10 @@ function renderReader() {
 }
 
 function inferChapterName() {
+  if (state.manifestUrl) {
+    const match = state.manifestUrl.match(/chapter[_ -]?(\d+)/i);
+    return match ? `Chapter ${Number(match[1])}` : "Hosted chapter";
+  }
   const path = [...state.files.values()][0]?.webkitRelativePath || "";
   const match = path.match(/chapter[_ -]?(\d+)/i);
   return match ? `Chapter ${Number(match[1])}` : "Chapter reading";
@@ -115,8 +155,13 @@ function selectSegment(index, autoplay) {
   if (state.autoScroll) passage?.scrollIntoView({ behavior: "smooth", block: "center" });
   if (state.loadedIndex !== index) {
     if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
-    state.objectUrl = URL.createObjectURL(clip);
-    audio.src = state.objectUrl;
+    if (typeof clip === "string") {
+      state.objectUrl = null;
+      audio.src = clip;
+    } else {
+      state.objectUrl = URL.createObjectURL(clip);
+      audio.src = state.objectUrl;
+    }
     audio.playbackRate = Number($("speed").value);
     state.loadedIndex = index;
   }
@@ -166,6 +211,9 @@ audio.addEventListener("ended", () => {
   if (state.index < state.segments.length - 1) selectSegment(state.index + 1, true);
   else toast("Chapter complete");
 });
+audio.addEventListener("error", () => {
+  if (audio.src) toast(`Unable to load audio for passage ${state.index + 1}. Check the hosted clips/ path.`);
+});
 
 $("playPause").addEventListener("click", () => {
   if (!state.segments.length) return;
@@ -202,6 +250,18 @@ $("focusToggle").addEventListener("click", event => {
 });
 $("focusExit").addEventListener("click", exitFocusMode);
 
+function openUrlDialog() {
+  $("urlDialog").showModal();
+  setTimeout(() => $("manifestUrl").focus(), 0);
+}
+$("urlToggle").addEventListener("click", openUrlDialog);
+$("urlHeroButton").addEventListener("click", openUrlDialog);
+$("dialogClose").addEventListener("click", () => $("urlDialog").close());
+$("urlForm").addEventListener("submit", event => {
+  event.preventDefault();
+  loadManifestUrl($("manifestUrl").value);
+});
+
 function exitFocusMode() {
   document.body.classList.remove("focus-mode");
   $("focusToggle").setAttribute("aria-pressed", "false");
@@ -233,4 +293,10 @@ function toast(message) {
   element.classList.add("show");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => element.classList.remove("show"), 4200);
+}
+
+const initialManifestUrl = new URL(window.location.href).searchParams.get("manifest");
+if (initialManifestUrl) {
+  $("manifestUrl").value = initialManifestUrl;
+  loadManifestUrl(initialManifestUrl);
 }

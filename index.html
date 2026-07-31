@@ -16,6 +16,7 @@
     </a>
     <div class="top-actions">
       <button class="quiet-button" id="focusToggle" type="button" aria-pressed="false">Focus mode</button>
+      <button class="quiet-button" id="urlToggle" type="button">Open URL</button>
       <label class="folder-button">
         <input id="folderInput" type="file" webkitdirectory multiple accept=".json,.wav,.mp3,.m4a,.ogg">
         <span>Open chapter folder</span>
@@ -32,6 +33,7 @@
         <input type="file" webkitdirectory multiple accept=".json,.wav,.mp3,.m4a,.ogg" data-folder-input>
         <span>Choose chapter folder</span><b>→</b>
       </label>
+      <button class="url-hero-button" id="urlHeroButton" type="button">Or open a hosted chapter URL</button>
       <div class="how-it-works">
         <span><b>01</b> Load manifest</span>
         <span><b>02</b> Match clips</span>
@@ -104,6 +106,17 @@
   </footer>
 
   <div class="toast" id="toast" role="status"></div>
+  <dialog class="url-dialog" id="urlDialog">
+    <form method="dialog" id="urlForm">
+      <button class="dialog-close" id="dialogClose" type="button" aria-label="Close">×</button>
+      <p class="eyebrow">Hosted chapter</p>
+      <h2>Open a manifest URL</h2>
+      <p>Paste a public <code>manifest.json</code> address. Audio clips will be loaded from its neighboring <code>clips/</code> folder.</p>
+      <label for="manifestUrl">Manifest URL</label>
+      <input id="manifestUrl" type="url" required placeholder="https://username.github.io/reader/books/chapter1/manifest.json">
+      <button class="dialog-submit" value="default" type="submit">Open chapter</button>
+    </form>
+  </dialog>
   <script src="app.js"></script>
 </body>
 </html>
