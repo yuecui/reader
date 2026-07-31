@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#15120f">
+  <title>Living Pages — Immersive Audiobook Reader</title>
+  <meta name="description" content="A local-first, synchronized audiobook reader for Voicebox chapter manifests and clips.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Living Pages home">
+      <span class="brand-mark">LP</span>
+      <span><strong>Living Pages</strong><small>Immersive audiobook reader</small></span>
+    </a>
+    <div class="top-actions">
+      <button class="quiet-button" id="focusToggle" type="button" aria-pressed="false">Focus mode</button>
+      <label class="folder-button">
+        <input id="folderInput" type="file" webkitdirectory multiple accept=".json,.wav,.mp3,.m4a,.ogg">
+        <span>Open chapter folder</span>
+      </label>
+    </div>
+  </header>
+
+  <main>
+    <section class="welcome" id="welcome">
+      <p class="eyebrow">Local-first listening</p>
+      <h1>Let every voice<br><em>live on the page.</em></h1>
+      <p class="welcome-copy">Choose a generated chapter folder containing <code>manifest.json</code> and its <code>clips</code> directory. Your files never leave this browser.</p>
+      <label class="hero-button">
+        <input type="file" webkitdirectory multiple accept=".json,.wav,.mp3,.m4a,.ogg" data-folder-input>
+        <span>Choose chapter folder</span><b>→</b>
+      </label>
+      <div class="how-it-works">
+        <span><b>01</b> Load manifest</span>
+        <span><b>02</b> Match clips</span>
+        <span><b>03</b> Read & listen</span>
+      </div>
+    </section>
+
+    <section class="reader" id="reader" hidden>
+      <button class="focus-exit" id="focusExit" type="button" aria-label="Exit focus mode">Exit focus <span>Esc</span></button>
+      <aside class="chapter-rail">
+        <div>
+          <p class="eyebrow">Now reading</p>
+          <h2 id="bookTitle">Adam Bede</h2>
+          <p class="chapter-label" id="chapterLabel">Chapter</p>
+        </div>
+        <div class="voice-card">
+          <span class="voice-orb" id="voiceOrb">A</span>
+          <div><small>Current voice</small><strong id="currentVoice">Alloy</strong><span id="currentSpeaker">Narrator</span></div>
+        </div>
+        <dl class="session-log">
+          <div><dt>Passage</dt><dd id="segmentNumber">1 / 1</dd></div>
+          <div><dt>Type</dt><dd id="segmentKind">Narration</dd></div>
+          <div><dt>Quote ID</dt><dd id="quoteId">—</dd></div>
+          <div><dt>Confidence</dt><dd id="confidence">—</dd></div>
+        </dl>
+        <button class="quiet-button full" id="downloadLog" type="button">Download session log</button>
+      </aside>
+
+      <article class="reading-pane" id="readingPane">
+        <div class="chapter-heading">
+          <p id="chapterKicker">Chapter</p>
+          <h1 id="chapterTitle">The Workshop</h1>
+        </div>
+        <div class="passages" id="passages" aria-live="polite"></div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="player" id="player" hidden>
+    <audio id="audio" preload="metadata"></audio>
+    <div class="track-meta">
+      <span class="mini-orb" id="miniOrb">A</span>
+      <div><strong id="trackSpeaker">Narrator · Alloy</strong><span id="trackText">Ready to read</span></div>
+    </div>
+    <div class="transport">
+      <div class="transport-buttons">
+        <button id="previous" type="button" aria-label="Previous passage">↤</button>
+        <button class="play-button" id="playPause" type="button" aria-label="Play">▶</button>
+        <button id="next" type="button" aria-label="Next passage">↦</button>
+      </div>
+      <div class="timeline">
+        <span id="currentTime">0:00</span>
+        <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek within passage">
+        <span id="duration">0:00</span>
+      </div>
+    </div>
+    <div class="player-options">
+      <label>Speed
+        <select id="speed">
+          <option value="0.8">0.8×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.15">1.15×</option>
+          <option value="1.25">1.25×</option>
+          <option value="1.5">1.5×</option>
+        </select>
+      </label>
+      <button id="wordTracking" class="active" type="button" aria-pressed="true">Word tracking</button>
+      <button id="autoScroll" class="active" type="button" aria-pressed="true">Auto-scroll</button>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
