@@ -1,0 +1,21 @@
+mkdir -p books/adam_bede/{source,review,config,enriched,audio}
+2. Generate the review and enriched files
+The first speaker-identification run creates both:
+python3 pipeline/identify_speakers.py \
+  books/adam_bede/source/adam_bede.xml \
+  books/adam_bede/source/characters.txt \
+  books/adam_bede/enriched/adam_bede.enriched.xml \
+  --review books/adam_bede/review/speaker_review.csv
+
+First create the voice configuration:
+cp pipeline/workflow_config.example.json \
+  books/adam_bede/config/voice_config.json
+
+
+  
+  python3 pipeline/identify_character_genders.py \
+  books/adam_bede/enriched/adam_bede.enriched.xml \
+  books/adam_bede/source/characters.txt \
+  --output books/adam_bede/config/character_genders.json \
+  --review books/adam_bede/review/gender_review.csv \
+  --update-config books/adam_bede/config/voice_config.json
