@@ -1,0 +1,20 @@
+{
+  "profiles": {
+    "narrator": ["Alloy"],
+    "male": ["George", "Daniel", "Fable", "Lewis"],
+    "female": ["Emma", "Isabella", "Sarah", "Laura"],
+    "unknown": ["Alloy"]
+  },
+  "character_genders": {
+    "character-id-from-who": "male",
+    "another-character-id": "female"
+  },
+  "character_profiles": {
+    "optional-character-id": ["George", "Daniel"]
+  },
+  "minimum_confidence": 0.75,
+  "language": "en",
+  "engine": "kokoro",
+  "model_size": null,
+  "instruction": "Speak in a natural British English accent suitable for a literary audiobook. Preserve the emotion and punctuation of the passage."
+}

@@ -10,6 +10,7 @@ const state = {
   wordTracking: getStoredPreference("living-pages-word-tracking") !== "off",
   session: [],
   objectUrl: null,
+  voicePreferences: getStoredJson("living-pages-voice-preferences", {}),
 };
 
 const $ = (id) => document.getElementById(id);
@@ -23,6 +24,22 @@ function getStoredPreference(key) {
 function setStoredPreference(key, value) {
   try { window.localStorage.setItem(key, value); }
   catch { /* Reading still works when storage is blocked. */ }
+}
+
+function getStoredJson(key, fallback) {
+  try { return JSON.parse(window.localStorage.getItem(key)) || fallback; }
+  catch { return fallback; }
+}
+
+function voiceOptions(segment) {
+  if (Array.isArray(segment.voice_options) && segment.voice_options.length) return segment.voice_options;
+  return [{ profile: segment.profile || "Unknown", clip: segment.clip, audio_url: segment.audio_url }];
+}
+
+function selectedVoiceOption(segment) {
+  const options = voiceOptions(segment);
+  const preferred = state.voicePreferences[segment.speaker_id];
+  return options.find(option => option.profile === preferred) || options[0];
 }
 
 document.querySelectorAll("[data-folder-input], #folderInput").forEach(input => {
@@ -83,13 +100,14 @@ async function loadManifestUrl(value) {
 }
 
 function clipBasename(segment) {
-  const value = segment.clip || "";
+  const value = selectedVoiceOption(segment).clip || "";
   return value.split(/[\\/]/).pop();
 }
 
 function findClip(segment) {
+  const option = selectedVoiceOption(segment);
   if (state.baseUrl) {
-    if (segment.audio_url) return new URL(segment.audio_url, state.baseUrl).href;
+    if (option.audio_url) return new URL(option.audio_url, state.baseUrl).href;
     const name = clipBasename(segment);
     return name ? new URL(`clips/${encodeURIComponent(name)}`, state.baseUrl).href : null;
   }
@@ -176,23 +194,32 @@ function selectSegment(index, autoplay) {
     state.loadedIndex = index;
   }
   updateMetadata();
-  state.session.push({ at: new Date().toISOString(), action: autoplay ? "play" : "select", index: index + 1, speaker: segment.speaker_id, profile: segment.profile, quote_id: segment.quote_id });
+  state.session.push({ at: new Date().toISOString(), action: autoplay ? "play" : "select", index: index + 1, speaker: segment.speaker_id, profile: selectedVoiceOption(segment).profile, quote_id: segment.quote_id });
   if (autoplay) audio.play().catch(error => toast(error.message));
 }
 
 function updateMetadata() {
   const segment = state.segments[state.index];
+  const selected = selectedVoiceOption(segment);
   const speaker = displaySpeaker(segment);
-  const initial = (segment.profile || speaker || "V")[0].toUpperCase();
+  const initial = (selected.profile || speaker || "V")[0].toUpperCase();
   $("voiceOrb").textContent = initial;
   $("miniOrb").textContent = initial;
-  $("currentVoice").textContent = segment.profile || "Unknown";
+  const picker = $("currentVoice");
+  picker.replaceChildren(...voiceOptions(segment).map(option => {
+    const item = document.createElement("option");
+    item.value = option.profile;
+    item.textContent = option.profile;
+    item.selected = option.profile === selected.profile;
+    return item;
+  }));
+  picker.disabled = voiceOptions(segment).length < 2;
   $("currentSpeaker").textContent = speaker;
   $("segmentNumber").textContent = `${state.index + 1} / ${state.segments.length}`;
   $("segmentKind").textContent = String(segment.kind || "passage").replaceAll("-", " ");
   $("quoteId").textContent = segment.quote_id || "—";
   $("confidence").textContent = segment.confidence == null ? "—" : `${Math.round(segment.confidence * 100)}%`;
-  $("trackSpeaker").textContent = `${speaker} · ${segment.profile || "Unknown"}`;
+  $("trackSpeaker").textContent = `${speaker} · ${selected.profile || "Unknown"}`;
   $("trackText").textContent = segment.text;
 }
 
@@ -236,6 +263,14 @@ $("seek").addEventListener("input", event => {
   if (Number.isFinite(audio.duration)) audio.currentTime = audio.duration * Number(event.target.value) / 1000;
 });
 $("speed").addEventListener("change", event => { audio.playbackRate = Number(event.target.value); });
+$("currentVoice").addEventListener("change", event => {
+  const segment = state.segments[state.index];
+  state.voicePreferences[segment.speaker_id] = event.target.value;
+  setStoredPreference("living-pages-voice-preferences", JSON.stringify(state.voicePreferences));
+  state.loadedIndex = -1;
+  selectSegment(state.index, !audio.paused);
+  toast(`${displaySpeaker(segment)} will use ${event.target.value}`);
+});
 $("autoScroll").addEventListener("click", event => {
   state.autoScroll = !state.autoScroll;
   event.currentTarget.classList.toggle("active", state.autoScroll);
