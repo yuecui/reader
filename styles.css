@@ -67,7 +67,8 @@ code { padding: 2px 5px; border-radius: 4px; background: rgba(0,0,0,.055); font-
 .chapter-label { color: var(--muted); font: italic 15px var(--serif); }
 .voice-card { display: flex; gap: 12px; align-items: center; margin: 42px 0 28px; padding: 16px 0; border-block: 1px solid var(--line); }
 .voice-orb { width: 48px; height: 48px; font-size: 20px; flex: 0 0 auto; }
-.voice-card small, .voice-card strong, .voice-card span { display: block; }
+.voice-card small, .voice-card strong, .voice-card #currentSpeaker { display: block; }
+.voice-card .voice-orb { display: grid; place-items: center; line-height: 1; }
 .voice-card small { color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
 .voice-card strong { margin: 3px 0; font-family: var(--serif); }
 .voice-card span { color: var(--muted); font-size: 12px; }
