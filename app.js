@@ -1,5 +1,7 @@
 const state = {
   manifest: null,
+  loadVersion: 0,
+  sourcePath: "",
   segments: [],
   files: new Map(),
   baseUrl: null,
@@ -47,10 +49,13 @@ document.querySelectorAll("[data-folder-input], #folderInput").forEach(input => 
 });
 
 async function loadFolder(files) {
+  const version = ++state.loadVersion;
   try {
     const manifestFile = files.find(file => file.name === "manifest.json");
     if (!manifestFile) throw new Error("No manifest.json was found in that folder.");
     const manifest = JSON.parse(await manifestFile.text());
+    if (version !== state.loadVersion) return;
+    state.sourcePath = manifestFile.webkitRelativePath;
     if (!Array.isArray(manifest.segments) || !manifest.segments.length) {
       throw new Error("The manifest contains no audio segments.");
     }
@@ -58,12 +63,17 @@ async function loadFolder(files) {
     state.segments = manifest.segments;
     state.baseUrl = null;
     state.manifestUrl = null;
+    const pageUrl = new URL(window.location.href);
+    pageUrl.searchParams.delete("manifest");
+    history.replaceState(null, "", pageUrl);
     state.files.clear();
     for (const file of files) {
       if (/\.(wav|mp3|m4a|ogg)$/i.test(file.name)) state.files.set(file.name, file);
     }
     const matched = state.segments.filter(segment => findClip(segment)).length;
     if (!matched) throw new Error("Manifest loaded, but no matching files were found in clips/.");
+    audio.pause();
+    state.loadedIndex = -1;
     renderReader();
     selectSegment(0, false);
     toast(`Loaded ${state.segments.length} passages · ${matched} audio clips matched`);
@@ -73,12 +83,15 @@ async function loadFolder(files) {
 }
 
 async function loadManifestUrl(value) {
+  const version = ++state.loadVersion;
   try {
     const url = new URL(value, window.location.href);
     toast("Loading hosted chapter…");
     const response = await fetch(url.href, { cache: "no-store" });
     if (!response.ok) throw new Error(`Manifest request failed: ${response.status} ${response.statusText}`);
     const manifest = await response.json();
+    if (version !== state.loadVersion) return;
+    state.sourcePath = url.pathname;
     if (!Array.isArray(manifest.segments) || !manifest.segments.length) {
       throw new Error("The hosted manifest contains no audio segments.");
     }
@@ -87,6 +100,8 @@ async function loadManifestUrl(value) {
     state.files.clear();
     state.baseUrl = new URL(".", url.href);
     state.manifestUrl = url.href;
+    audio.pause();
+    state.loadedIndex = -1;
     renderReader();
     selectSegment(0, false);
     const pageUrl = new URL(window.location.href);
@@ -118,11 +133,12 @@ function renderReader() {
   $("welcome").hidden = true;
   $("reader").hidden = false;
   $("player").hidden = false;
+  $("bookTitle").textContent = inferBookTitle();
   const chapterName = inferChapterName();
   $("chapterLabel").textContent = chapterName;
   $("chapterKicker").textContent = chapterName;
   const first = state.segments[0]?.text || "Chapter";
-  $("chapterTitle").textContent = first.length < 80 ? first : "The Workshop";
+  $("chapterTitle").textContent = state.manifest.chapters?.find(c => c.selected !== false)?.title || (first.length < 80 ? first : chapterName);
   const container = $("passages");
   container.replaceChildren();
   state.segments.forEach((segment, index) => {
@@ -154,7 +170,19 @@ function renderReader() {
   });
 }
 
+function inferBookTitle() {
+  const metadata = state.manifest.book_title || state.manifest.title || state.manifest.book?.title;
+  if (metadata) return metadata;
+  const parts = decodeURIComponent(state.sourcePath || "").split("/").filter(Boolean);
+  const audioIndex = parts.indexOf("audio");
+  const candidate = audioIndex > 0 ? parts[audioIndex - 1] : parts.find(p => /adam[_ -]bede|brother[_ -]jacob/i.test(p));
+  return candidate ? candidate.replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase()) : "Audiobook";
+}
+
 function inferChapterName() {
+  const chapters = state.manifest.chapters?.filter(c => c.selected !== false);
+  if (chapters?.length > 1) return `${chapters.length} chapters`;
+  if (chapters?.length === 1) return chapters[0].title;
   if (state.manifestUrl) {
     const match = state.manifestUrl.match(/chapter[_ -]?(\d+)/i);
     return match ? `Chapter ${Number(match[1])}` : "Hosted chapter";
@@ -192,6 +220,12 @@ function selectSegment(index, autoplay) {
     }
     audio.playbackRate = Number($("speed").value);
     state.loadedIndex = index;
+  }
+  const chapter = state.manifest.chapters?.find(c => c.index === segment.chapter);
+  if (chapter) {
+    $("chapterTitle").textContent = chapter.title;
+    $("chapterKicker").textContent = `Chapter ${chapter.number || chapter.index}`;
+    $("chapterLabel").textContent = `Chapter ${chapter.number || chapter.index}`;
   }
   updateMetadata();
   state.session.push({ at: new Date().toISOString(), action: autoplay ? "play" : "select", index: index + 1, speaker: segment.speaker_id, profile: selectedVoiceOption(segment).profile, quote_id: segment.quote_id });
